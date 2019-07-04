@@ -1,12 +1,41 @@
 import * as Yup from 'yup';
-import { parseISO, isBefore } from 'date-fns';
+import { parseISO, isBefore, endOfDay, startOfDay } from 'date-fns';
+import { Op } from 'sequelize';
 
 import Meetup from '../models/Meetup';
 import File from '../models/File';
+import User from '../models/User';
 
 class MeetupController {
   async index(req, res) {
-    const meetups = await Meetup.findAll({ where: { user_id: req.userId } });
+    const { page = 1, date } = req.query;
+
+    if (!date) return res.status(400).json({ error: 'You must pass a date.' });
+
+    const parsedDate = parseISO(date);
+
+    const meetups = await Meetup.findAll({
+      where: {
+        user_id: req.userId,
+        date: {
+          [Op.between]: [startOfDay(parsedDate), endOfDay(parsedDate)],
+        },
+      },
+      limit: 10,
+      offset: (page - 1) * 10,
+      include: [
+        {
+          model: User,
+          as: 'organizer',
+          attributes: ['name', 'email'],
+        },
+        {
+          model: File,
+          as: 'banner',
+          attributes: ['path', 'url'],
+        },
+      ],
+    });
     return res.json(meetups);
   }
 
@@ -20,20 +49,20 @@ class MeetupController {
     });
 
     if (!(await schema.isValid(req.body)))
-      return res.status(400).json({ error: 'Validation fails' });
+      return res.status(400).json({ error: 'Validation fails.' });
 
     const { banner_id, date } = req.body;
 
     // check if banner exists
     const banner = await File.findByPk(banner_id);
     if (!banner)
-      return res.status(400).json({ error: 'Banner does not exist' });
+      return res.status(400).json({ error: 'Banner does not exist.' });
 
     // check if date has passed
     if (isBefore(parseISO(date), new Date()))
       return res
         .status(400)
-        .json({ error: 'Can not create meetups with past dates' });
+        .json({ error: 'Can not create meetups that already happened.' });
 
     const meetup = await Meetup.create({ ...req.body, user_id: req.userId });
 
@@ -50,7 +79,7 @@ class MeetupController {
     });
 
     if (!(await schema.isValid(req.body)))
-      return res.status(400).json({ error: 'Validation fails' });
+      return res.status(400).json({ error: 'Validation fails.' });
 
     // check if meetup exists
     const meetup = await Meetup.findByPk(req.params.id);
@@ -82,7 +111,7 @@ class MeetupController {
     if (meetup.user_id !== req.userId)
       return res
         .status(401)
-        .json({ error: 'You can only delete meetups that you have created' });
+        .json({ error: 'You can only delete meetups that you have created.' });
 
     // check if the meetup didn't happen yet
     if (isBefore(meetup.date, new Date()))

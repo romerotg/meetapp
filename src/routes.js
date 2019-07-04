@@ -5,6 +5,8 @@ import UserController from './app/controllers/UserController';
 import SessionController from './app/controllers/SessionController';
 import FileController from './app/controllers/FileController';
 import MeetupController from './app/controllers/MeetupController';
+import OrganizedMeetupController from './app/controllers/OrganizedMeetupController';
+import SubscriptionController from './app/controllers/SubscriptionController';
 import authMiddleware from './app/middlewares/auth';
 import multerConfig from './config/multer';
 
@@ -29,5 +31,12 @@ routes.get('/meetups', MeetupController.index);
 routes.post('/meetups', MeetupController.store);
 routes.put('/meetups/:id', MeetupController.update);
 routes.delete('/meetups/:id', MeetupController.delete);
+
+// organized meetup routes
+routes.get('/mymeetups', OrganizedMeetupController.index);
+
+// subscription routes
+routes.get('/subscriptions', SubscriptionController.index);
+routes.post('/subscriptions', SubscriptionController.store);
 
 export default routes;
